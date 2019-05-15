@@ -1,0 +1,9 @@
+cminpack/libast_la-dpmpar.lo: cminpack/dpmpar.c cminpack/cminpack.h \
+ /usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/float.h \
+ cminpack/cminpackP.h
+
+cminpack/cminpack.h:
+
+/usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/float.h:
+
+cminpack/cminpackP.h:

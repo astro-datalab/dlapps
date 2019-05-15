@@ -1,0 +1,10 @@
+libast_drama_la-err_drama.lo: err_drama.c config.h err.h Ers.h \
+ /usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/stdarg.h
+
+config.h:
+
+err.h:
+
+Ers.h:
+
+/usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/stdarg.h:

@@ -1,0 +1,24 @@
+
+  Usage:
+	fits2csv [<opts>] [ <file> .... ]
+
+  where <opts> includes:
+
+        -h,--help               this message
+        -d,--debug              set debug flag
+        -v,--verbose            set verbose output flag
+       
+        -e,--extnum=<N>         process table extension number <N>
+        -E,--extname=<name>     process table extension name <name>
+        -i,--input=<file>       set input filename
+        -o,--output=<file>      set output filename
+
+        -c,--chunk=<nrows>      set size of ingest chunk size
+        -C,--concat             concatenate all input files
+        -X,--explode            explode array columns to separate columns
+        -H,--noheader           suppress CSV column header
+        -N,--number             number rows
+        -r,--rowrange=<range>   convert only row range
+        -s,--select=<expr>      convert rows selected by expression
+        -S--singlequote         use single quotes for strings 
+

@@ -1,0 +1,29 @@
+#!/bin/csh
+#
+
+set     db      = "fitz"
+set     user    = "fitz"
+set     passwd  = ""
+set     host    = "localhost:5432"
+set     lbin    = "/usr/local/bin/"
+
+set     table   = `echo $1:r | sed -e 's/-/_/g'`
+set     csv     = $1:r.csv
+
+
+
+echo "Creating DB table ...."
+date
+psql -d "$db" -U "$user" -c "drop table if exists $table"       >& /dev/null
+time java -classpath ${lbin}stilts.jar:${lbin}postgresql-jdbc.jar \
+     -Djdbc.drivers=org.postgresql.Driver \
+     uk.ac.starlink.ttools.Stilts \
+     tpipe in=$1 \
+        cmd='explodeall' \
+        omode='out' \
+        out="jdbc:postgresql://${host}/${db}?user=${user}#${table}" |& \
+                /bin/egrep -v WARNING
+
+date
+echo "Done."
+

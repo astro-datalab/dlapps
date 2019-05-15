@@ -1,0 +1,9 @@
+libast_grf_2_0_la-grf_2.0.lo: grf_2.0.c grf.h error.h config.h ast_err.h
+
+grf.h:
+
+error.h:
+
+config.h:
+
+ast_err.h:

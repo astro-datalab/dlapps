@@ -1,0 +1,12 @@
+libast_grf3d_la-grf3d.lo: grf3d.c grf3d.h grf.h error.h config.h \
+ ast_err.h
+
+grf3d.h:
+
+grf.h:
+
+error.h:
+
+config.h:
+
+ast_err.h:

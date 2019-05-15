@@ -1,0 +1,25 @@
+
+dldb1.sdm.noao.edu> time ./fits2csv -X --sql=p Hydra_ind1.fits | psql
+DROP TABLE
+CREATE TABLE
+653.718u 10.415s 11:40.67 94.7% 0+0k 0+0io 0pf+0w
+687.490u 20.196s 11:40.67 101.0%        0+0k 0+0io 0pf+0w
+
+-----------------------------------------
+
+dldb1.sdm.noao.edu> ./_load Hydra_ind1.fits
+ 
+Converting to CSV ....
+  Thu Sep  8 15:03:13 MST 2016
+  376.842u 28.348s 6:54.37 97.7%  0+0k 0+320io 0pf+0w
+
+Creating DB table ....
+  Thu Sep  8 15:10:07 MST 2016
+
+Loading CSV file ....
+  Thu Sep  8 15:10:08 MST 2016
+  0.000u 0.001s 5:56.80 0.0%      0+0k 0+0io 0pf+0w
+
+Thu Sep  8 15:16:04 MST 2016
+Done.
+

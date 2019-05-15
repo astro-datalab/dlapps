@@ -1,0 +1,5 @@
+#!/bin/csh -f
+
+scp -p $1 tucana:voc/voapps/lib/
+scp -p $1 tucana:vao/voc.svn/voapps/lib/
+scp -p $1 tucana:vao/voc.svn/../rel/1.0/voapps/lib/

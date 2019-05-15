@@ -1,0 +1,43 @@
+#!/bin/csh
+#
+
+set     db      = "fitz"
+set     user    = "fitz"
+set     passwd  = ""
+set     host    = "localhost:5432"
+set     lbin    = "/usr/local/bin/"
+
+set     table   = $1:r
+set     csv     = $1:r.csv
+set     csv_p   = /data/fitz/$csv
+
+
+echo " "
+echo "Converting to CSV ...."
+date
+time stilts tpipe in=$1 ifmt=fits cmd="explodeall" out=${csv_p} ofmt=csv
+
+echo "Creating DB table ...."
+date
+psql -d "$db" -U "$user" -c "drop table if exists $table"       >& /dev/null
+time java -classpath ${lbin}stilts.jar:${lbin}postgresql-jdbc.jar \
+     -Djdbc.drivers=org.postgresql.Driver \
+     uk.ac.starlink.ttools.Stilts \
+     tpipe in=$1 \
+        cmd='explodeall; rowrange 1 1' \
+        omode='out' \
+        out="jdbc:postgresql://${host}/${db}?user=${user}#${table}" |& \
+                /bin/egrep -v WARNING
+
+psql -d "$db" -U "$user" -c "truncate table $table"
+
+echo "Loading CSV file ...."
+date
+time psql -d "$db" -U "$user" \
+    -c "COPY $table FROM '$csv_p' DELIMITER ',' CSV HEADER"
+
+date
+
+/bin/rm -f $csv_p
+echo "Done."
+

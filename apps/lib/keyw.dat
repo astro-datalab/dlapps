@@ -1,0 +1,5 @@
+dec	'12:12:23.4'
+ra	ha
+mjd-obs	1234.567
+expnum	1234
+telescop "Blanco 4m"

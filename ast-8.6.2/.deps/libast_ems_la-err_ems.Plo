@@ -1,0 +1,31 @@
+libast_ems_la-err_ems.lo: err_ems.c err.h ems.h \
+ /usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/stdarg.h \
+ /usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/stddef.h \
+ /usr/include/inttypes.h /usr/include/features.h /usr/include/sys/cdefs.h \
+ /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
+ /usr/include/gnu/stubs-64.h /usr/include/stdint.h \
+ /usr/include/bits/wchar.h
+
+err.h:
+
+ems.h:
+
+/usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/stdarg.h:
+
+/usr/lib/../lib/gcc/x86_64-redhat-linux/4.4.7/include/stddef.h:
+
+/usr/include/inttypes.h:
+
+/usr/include/features.h:
+
+/usr/include/sys/cdefs.h:
+
+/usr/include/bits/wordsize.h:
+
+/usr/include/gnu/stubs.h:
+
+/usr/include/gnu/stubs-64.h:
+
+/usr/include/stdint.h:
+
+/usr/include/bits/wchar.h:

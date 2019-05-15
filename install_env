@@ -1,0 +1,25 @@
+#!/bin/bash
+
+prefix=.
+
+bindir=${prefix}/bin/
+libdir=${prefix}/lib/
+incdir=${prefix}/include/
+mandir=${prefix}/man/man1/
+
+# Process cmdline flags.
+for a in "$@"
+do
+    case "$a" in
+    -b | -bindir | --bindir)        # task bin directory
+        echo $bindir ;;
+    -l | -libdir | --libdir)        # library directory
+        echo $libdir ;;
+    -i | -incdir | --incdir) 	    # include directory
+        echo $incdir ;;
+    -m | -mandir | --mandir)        # man page directory
+        echo $mandir ;;
+    *)
+	exit 1 ;;
+    esac
+done
