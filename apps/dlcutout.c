@@ -437,7 +437,8 @@ dl_computeMetadata (char *imagefile)
     int    cutout1[MAXAXES], cutout2[MAXAXES], npts=2, step=2;
     char   ctype[MAXAXES][KEYLEN]; char cunit[MAXAXES][KEYLEN];
     double in[MAXAXES*2], out[MAXAXES*2];
-    double  cra1, cdec1, cra2, cdec2, cra3, cdec3, cra4, cdec4;
+    double pix_in[MAXAXES*2], pix_out[MAXAXES*2];
+    double cra1, cdec1, cra2, cdec2, cra3, cdec3, cra4, cdec4;
     char   comment[MAXAXES][COMLEN];
     int    status1=0, status2=0;
     char  *mdfile;
@@ -465,17 +466,13 @@ dl_computeMetadata (char *imagefile)
 	in[(i*step)+1] = naxis[i];
     }
     if (debug) {
-        printf ("Fwd Bounding B4: in %g %g %g %g\n", 
-                in[0], in[1], in[2], in[3]);
-        printf ("Fwd Bounding B4: out %g %g %g %g\n", 
-                out[0], out[1], out[2], out[3]);
+        printf("Fwd Bound B4: in %g %g %g %g\n", in[0],in[1],in[2],in[3]);
+        printf("Fwd Bound B4: out %g %g %g %g\n", out[0],out[1],out[2],out[3]);
     }
     astTranN (wcs, npts, imdim, step, in, 1, imdim, step, out);
     if (debug) {
-        printf ("Fwd Bounding B4: in %g %g %g %g\n", 
-                in[0], in[1], in[2], in[3]);
-        printf ("Fwd Bounding B4: out %g %g %g %g\n", 
-                out[0], out[1], out[2], out[3]);
+        printf("Fwd Bound B4: in %g %g %g %g\n", in[0],in[1],in[2],in[3]);
+        printf("Fwd Bound B4: out %g %g %g %g\n", out[0],out[1],out[2],out[3]);
     }
     if (!astOK)
 	dl_error (6, "cannot read metadata for image", imagefile);
@@ -509,24 +506,6 @@ dl_computeMetadata (char *imagefile)
 	time_filter = 0;
     if (pol_axis < 0)
 	pol_filter = 0;
-
-    /*
-    if (debug) {
-	// RA, DEC at image edge.
-	double rs = out[(ra_axis*step)+0] * RAD2DEG;
-	double re = out[(ra_axis*step)+1] * RAD2DEG;
-	double ds = out[(dec_axis*step)+0] * RAD2DEG;
-	double de = out[(dec_axis*step)+1] * RAD2DEG;
-
-	rs = ((rs < 0) ? (rs + 360) : rs);
-	re = ((re < 0) ? (re + 360) : re);
-
-	printf ("Spatial edge:  ra_start %.*g ra_end %.*g\n",
-	    DBL_DIG, rs, DBL_DIG, re);
-	printf ("          dec_start %.*g dec_end %.*g\n",
-	    DBL_DIG, ds, DBL_DIG, de);
-    }
-    */
 
 retry_:
     if (spat_filter) {
@@ -590,22 +569,20 @@ retry_:
      *  reverse transformation to get back to image pixel coordinates.
      */
     if (debug) {
-        printf ("Bounding B4: in %g %g %g %g\n", 
-                in[0], in[1], in[2], in[3]);
+        printf ("Bounding B4: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
         printf ("Bounding B4: out %g %g %g %g\n", 
                 out[0]*RAD2DEG, out[1]*RAD2DEG, 
                 out[2]*RAD2DEG, out[3]*RAD2DEG);
     }
     astTranN (wcs, npts, imdim, step, out, 0, imdim, step, in);
     if (debug) {
-        printf ("Bounding after: in %g %g %g %g\n", 
-                in[0], in[1], in[2], in[3]);
+        printf ("Bounding after: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
         printf ("Bounding after: out %g %g %g %g\n", 
                 out[0]*RAD2DEG, out[1]*RAD2DEG, 
                 out[2]*RAD2DEG, out[3]*RAD2DEG);
     }
 
-    /* Compute the image plate scale.
+    /*  Compute the image plate scale and pixel width/height.
      */
     double scale_width = abs(width / (in[0] - in[1]) * 3600.0);
     double scale_height = abs(height / (in[2] - in[3]) * 3600.0);
@@ -618,7 +595,8 @@ retry_:
     }
 
 
-    double pix_in[MAXAXES*2], pix_out[MAXAXES*2];
+    /*  Compute the requested position in image pixel space.
+     */
     pix_out[0]  = 1.0;
     pix_out[1]  = ra / RAD2DEG;
     pix_out[2]  = 1.0;
@@ -630,7 +608,6 @@ retry_:
                 pix_out[0], pix_out[1], pix_out[2], pix_out[3]);
         printf ("Center after: in %g %g %g %g\n", 
                 pix_in[0], pix_in[1], pix_in[2], pix_in[3]);
-
     }
     x_center = pix_in[1];
     y_center = pix_in[3];
@@ -640,7 +617,6 @@ retry_:
                 x_center - (pix_height/2.0), x_center + (pix_height/2.0),
                 y_center - (pix_height/2.0), y_center + (pix_height/2.0));
     }
-
 
 
     /*  Clip the cutout region, which may extend beyond the bounds of the
@@ -656,7 +632,10 @@ retry_:
     for (i=0;  i < naxes;  i++) {
         double v1 = 0.0, v2 = 0.0;
 
-        if (pix_size==3) {
+        /*  If cutout size is the same in each axis, compute the cutout in
+         *  pixel space to avoid a cos(dec) correction.
+         */
+        if (pix_size) {
             v1 = (i ? (y_center-pix_height/2.0) : (x_center+pix_height/2.0));
             v2 = (i ? (y_center+pix_height/2.0) : (x_center-pix_height/2.0));
         } else {
@@ -665,11 +644,9 @@ retry_:
         }
 
         if (debug) printf ("%d  v1/2 = %g / %g\n", i, v1, v2);
-        //if (v1 < 0.0) 
-        //    v1 += naxis[i], v2 += naxis[i];
         if (v1 < 0.0) {
             if (debug) printf ("CLIP v1 < 0.0: v1/2 = %g / %g\n", v1, v2);
-            v1 += 1.0;
+            v1 = 1.0;
         }
 
         // Check that we have some coverage.
@@ -694,7 +671,7 @@ retry_:
 
     /*  Do a final forward transform back to World coordinates to define
      *  the physical coverage of the clipped cutout region.
-    astTranN (wcs, npts, imdim, step, in, 1, imdim, step, out);
+        astTranN (wcs, npts, imdim, step, in, 1, imdim, step, out);
      */ 
 
     /*  Compute RA,DEC in degrees of cutout corner 1,1.
@@ -767,7 +744,6 @@ retry_:
 	dec_cen = (dec1 - dec3) / 2.0 + dec3;
 
 
-//if (debug) {
     /*  Compute RA,DEC in degrees of image corner 1,1.
      */
     in[(ra_axis*step)+0] = 1.0;
@@ -865,13 +841,6 @@ retry_:
         printf("     Corn4:  %lg %lg\n", ra4, dec4);
     }
 
-
-    /*  Image scale.  We assume that pixels are square.  DEC is used to
-     *  avoid the cos(dec) term required to convert delta-RA to angular
-     *  extent on the sky.
-    double im_scale = ((dec3 - dec1) / dec_len);
-    im_scale = im_scale * (60 * 60);
-     */
 
     /*  Metadata for a virtual image is saved to a file in the staging
      *  area, and may be referenced later to create the described virtual
@@ -983,25 +952,6 @@ retry_:
 	fprintf (fp, "obs_creation_type = cutout\n");
 
 	if (spat_filter) {
-	    /*  Image corners.
-	     *  [Does not change in a cutout, omitted.]
-	     *
-	    fprintf (fp, "im_ra1 = %.*g\n", DBL_DIG, ra1);
-	    fprintf (fp, "im_dec1 = %.*g\n", DBL_DIG, dec1);
-	    fprintf (fp, "im_ra2 = %.*g\n", DBL_DIG, ra2);
-	    fprintf (fp, "im_dec2 = %.*g\n", DBL_DIG, dec2);
-	    fprintf (fp, "im_ra3 = %.*g\n", DBL_DIG, ra3);
-	    fprintf (fp, "im_dec3 = %.*g\n", DBL_DIG, dec3);
-	    fprintf (fp, "im_ra4 = %.*g\n", DBL_DIG, ra4);
-	    fprintf (fp, "im_dec4 = %.*g\n", DBL_DIG, dec4);
-	     */
-
-	    /*  Image scale.
-	     *  [Does not change in a cutout, omitted.]
-	     *
-	    fprintf (fp, "im_scale = %g\n", im_scale);
-	     */
-
 	    /*  Image center.
 	     */
 	    fprintf (fp, "s_ra = %.*g\n", DBL_DIG, ra_cen);
