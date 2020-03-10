@@ -65,6 +65,7 @@
 /* Global params shared by all functions. 
  */
 static int   debug 	= 0;
+static int   do_unlink 	= 1;
 //const  char *prog_name  = NULL;
 static char *pubdid 	= NULL;
 static char *dir 	= NULL;
@@ -82,6 +83,7 @@ static int extn		= 0;		// requested image extension
 static int preview	= 0;		// generate a preview?
 static int cutout	= 1;		// generate a cutout or use whole CCD?
 static int isCGI	= 0;		// are we running as a CGI script?
+static int pix_size	= 0;		// cutout size in pixels (2-D only)
 
 static double wavelo 	= 0.0;		// low side of wavelength range
 static double wavehi 	= 0.0;		// high side of wavelength range
@@ -127,7 +129,6 @@ extern int dl_FITS2PNG (char *fits_fname, char *png_fname);
 extern char *dl_mergeHeaders (char *phu_hdr, char *ehu_hdr);
 
 
-
 /* Command line arguments.
  */
 static char opts[] = "Dmxp:l:d:F";
@@ -139,6 +140,7 @@ static struct option long_opts[] = {
     { "mdfile",		required_argument,	NULL,	'l' },
     { "dir",		required_argument,	NULL,	'd' },
     { "force",		no_argument,		NULL,	'F' },
+    { "pixel",		no_argument,		NULL,	'P' },
     { "ra",		required_argument,	NULL,	RA  },
     { "dec",		required_argument,	NULL,	DEC },
     { "width",		required_argument,	NULL,	WIDTH },
@@ -151,7 +153,6 @@ static struct option long_opts[] = {
     { "section",	required_argument,	NULL,	SECTION },
     { NULL,		0,			NULL,	0 },
 };
-
 
 
 
@@ -173,7 +174,8 @@ int main (int argc, char *argv[])
 
     if ((qs = getenv ("QUERY_STRING"))) {
 	dir = "/dl1/temp";                              // [MACHDEP]
-	//debug++;
+	debug++;
+	do_unlink = 0;
 	extract++;
     	spat_filter++;
     	filter_term = 1;
@@ -215,6 +217,7 @@ int main (int argc, char *argv[])
     	    case 'l':  mdfile = optarg; 	break;
     	    case 'd':  dir = optarg; 		break;
     	    case 'F':  force++; 		break;
+    	    case 'P':  pix_size = atoi(optarg);	break;
     
     	    case RA:
     	        ra = strtod (optarg, &endptr);
@@ -301,6 +304,7 @@ int main (int argc, char *argv[])
 	printf ("prog=%s, mdfile=%s, imagefile=%s  preview=%d\n",
 	    prog_name, mdfile, imagefile, preview);
 	printf ("metadata=%d, extract=%d\n", metadata, extract);
+	printf ("pix_size=%d\n", pix_size);
     }
 
     /*  If we're not extracting an extension or cutout, simply return the
@@ -356,9 +360,9 @@ int main (int argc, char *argv[])
 	    /*  Delete the temp files.
 	     */
             if (access (fname, F_OK) == 0)  
-                unlink (fname);		
+                if (do_unlink) unlink (fname);		
             if (access (mdfile, F_OK) == 0) 
-                unlink (mdfile);
+                if (do_unlink) unlink (mdfile);
         }
 
 	if (fname)
@@ -428,6 +432,8 @@ dl_computeMetadata (char *imagefile)
     long   naxis[MAXAXES], datalen;
     int    real_naxes, axmap[MAXAXES], imdim=0, naxes, bitpix, i;
     double ra_cen, dec_cen, ra1, dec1, ra2, dec2, ra3, dec3, ra4, dec4;
+    double ra_size, dec_size;
+    double x_center = 0.0, y_center = 0.0;
     int    cutout1[MAXAXES], cutout2[MAXAXES], npts=2, step=2;
     char   ctype[MAXAXES][KEYLEN]; char cunit[MAXAXES][KEYLEN];
     double in[MAXAXES*2], out[MAXAXES*2];
@@ -459,13 +465,17 @@ dl_computeMetadata (char *imagefile)
 	in[(i*step)+1] = naxis[i];
     }
     if (debug) {
-        printf("Fwd Bounding B4: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
-        printf("Fwd Bounding B4: out %g %g %g %g\n", out[0], out[1], out[2], out[3]);
+        printf ("Fwd Bounding B4: in %g %g %g %g\n", 
+                in[0], in[1], in[2], in[3]);
+        printf ("Fwd Bounding B4: out %g %g %g %g\n", 
+                out[0], out[1], out[2], out[3]);
     }
     astTranN (wcs, npts, imdim, step, in, 1, imdim, step, out);
     if (debug) {
-        printf("Fwd Bounding B4: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
-        printf("Fwd Bounding B4: out %g %g %g %g\n", out[0], out[1], out[2], out[3]);
+        printf ("Fwd Bounding B4: in %g %g %g %g\n", 
+                in[0], in[1], in[2], in[3]);
+        printf ("Fwd Bounding B4: out %g %g %g %g\n", 
+                out[0], out[1], out[2], out[3]);
     }
     if (!astOK)
 	dl_error (6, "cannot read metadata for image", imagefile);
@@ -529,11 +539,17 @@ retry_:
 	 */
 	if (height <= 0.0)
 	    height = width;
+        if (width == height) pix_size++;
 
 	double ra1  = ra  - (width  / 2.0);
 	double ra2  = ra  + (width  / 2.0);
 	double dec1 = dec - (height / 2.0);
 	double dec2 = dec + (height / 2.0);
+
+	out[(ra_axis*step)+0]  = ra1 / RAD2DEG;
+	out[(ra_axis*step)+1]  = ra2 / RAD2DEG;
+	out[(dec_axis*step)+0] = dec1 / RAD2DEG;
+	out[(dec_axis*step)+1] = dec2 / RAD2DEG;
 
 	if (debug) {
 	    printf ("Spatial:  ra %.*g dec %.*g size %.*g %.*g\n",
@@ -541,11 +557,6 @@ retry_:
 	    printf ("       :  r1 %.*g r2 %.*g d1 %.*g d2 %.*g\n",
 		DBL_DIG, ra1, DBL_DIG, ra2, DBL_DIG, dec1, DBL_DIG, dec2);
 	}
-
-	out[(ra_axis*step)+0]  = ra1 / RAD2DEG;
-	out[(ra_axis*step)+1]  = ra2 / RAD2DEG;
-	out[(dec_axis*step)+0] = dec1 / RAD2DEG;
-	out[(dec_axis*step)+1] = dec2 / RAD2DEG;
     }
 
     if (spec_filter) {
@@ -579,14 +590,58 @@ retry_:
      *  reverse transformation to get back to image pixel coordinates.
      */
     if (debug) {
-        printf("Bounding B4: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
-        printf("Bounding B4: out %g %g %g %g\n", out[0], out[1], out[2], out[3]);
+        printf ("Bounding B4: in %g %g %g %g\n", 
+                in[0], in[1], in[2], in[3]);
+        printf ("Bounding B4: out %g %g %g %g\n", 
+                out[0]*RAD2DEG, out[1]*RAD2DEG, 
+                out[2]*RAD2DEG, out[3]*RAD2DEG);
     }
     astTranN (wcs, npts, imdim, step, out, 0, imdim, step, in);
     if (debug) {
-        printf("Bounding after: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
-        printf("Bounding after: out %g %g %g %g\n", out[0], out[1], out[2], out[3]);
+        printf ("Bounding after: in %g %g %g %g\n", 
+                in[0], in[1], in[2], in[3]);
+        printf ("Bounding after: out %g %g %g %g\n", 
+                out[0]*RAD2DEG, out[1]*RAD2DEG, 
+                out[2]*RAD2DEG, out[3]*RAD2DEG);
     }
+
+    /* Compute the image plate scale.
+     */
+    double scale_width = abs(width / (in[0] - in[1]) * 3600.0);
+    double scale_height = abs(height / (in[2] - in[3]) * 3600.0);
+    double pix_width = abs (width * 3600. / scale_width);
+    double pix_height = abs (height * 3600. / scale_width);
+    if (debug) {
+        printf ("  req scale : %g  %g\n", width, height);
+        printf ("image scale : %g  %g\n", scale_width, scale_height);
+        printf (" pixel size : %g  %g\n", pix_width, pix_height);
+    }
+
+
+    double pix_in[MAXAXES*2], pix_out[MAXAXES*2];
+    pix_out[0]  = 1.0;
+    pix_out[1]  = ra / RAD2DEG;
+    pix_out[2]  = 1.0;
+    pix_out[3]  = dec / RAD2DEG;
+    astTranN (wcs, 2, imdim, step, pix_out, 0, imdim, step, pix_in);
+    if (debug) {
+        printf ("Center pos: in %g %g\n", ra, dec);
+        printf ("Center after: out %g %g %g %g\n", 
+                pix_out[0], pix_out[1], pix_out[2], pix_out[3]);
+        printf ("Center after: in %g %g %g %g\n", 
+                pix_in[0], pix_in[1], pix_in[2], pix_in[3]);
+
+    }
+    x_center = pix_in[1];
+    y_center = pix_in[3];
+    if (debug) {
+        printf ("Center pixel: %g %g\n", x_center, y_center);
+        printf ("Corner pixel: %g %g --> %g %g\n", 
+                x_center - (pix_height/2.0), x_center + (pix_height/2.0),
+                y_center - (pix_height/2.0), y_center + (pix_height/2.0));
+    }
+
+
 
     /*  Clip the cutout region, which may extend beyond the bounds of the
      *  target image, to the physical image pixel matrix of the target image.
@@ -599,11 +654,23 @@ retry_:
      *  ending pixel values for that axis.
      */
     for (i=0;  i < naxes;  i++) {
-        double v1 = in[(i*step)+0];
-        double v2 = in[(i*step)+1];
+        double v1 = 0.0, v2 = 0.0;
 
-        if (v1 < 0.0) 
-            v1 += naxis[i], v2 += naxis[i];
+        if (pix_size==3) {
+            v1 = (i ? (y_center-pix_height/2.0) : (x_center+pix_height/2.0));
+            v2 = (i ? (y_center+pix_height/2.0) : (x_center-pix_height/2.0));
+        } else {
+            v1 = in[(i*step)+0];
+            v2 = in[(i*step)+1];
+        }
+
+        if (debug) printf ("%d  v1/2 = %g / %g\n", i, v1, v2);
+        //if (v1 < 0.0) 
+        //    v1 += naxis[i], v2 += naxis[i];
+        if (v1 < 0.0) {
+            if (debug) printf ("CLIP v1 < 0.0: v1/2 = %g / %g\n", v1, v2);
+            v1 += 1.0;
+        }
 
         // Check that we have some coverage.
         if (v1 > naxis[i] || v2 < 1.0) {
@@ -613,14 +680,16 @@ retry_:
 		    i, v1, naxis[i], v2);
         }
 
-        if (debug)
-            printf("Cutout: axis %d: %f %f\n", i, v1, v2);
-
         in[(i*step)+0] = cutout1[i] = max(1, min(naxis[i], nint(v1)));
         in[(i*step)+1] = cutout2[i] = max(1, min(naxis[i], nint(v2)));
 
-        if (debug)
-            printf("Cutout: clip %d: %d %d\n", i, cutout1[i], cutout2[i]);
+        if (pix_size) {
+            cutout1[i] = max(1, min(naxis[i], nint(v1)));
+            cutout2[i] = max(1, min(naxis[i], nint(v2)));
+        }
+        if (debug) 
+            printf ("Cutout: axis %d: %f %f    clip:  %d %d\n", 
+                    i, v1, v2, cutout1[i], cutout2[i]);
     }
 
     /*  Do a final forward transform back to World coordinates to define
@@ -628,7 +697,7 @@ retry_:
     astTranN (wcs, npts, imdim, step, in, 1, imdim, step, out);
      */ 
 
-    /*  Compute RA,DEC in degrees of image corner 1,1.
+    /*  Compute RA,DEC in degrees of cutout corner 1,1.
      */
     in[(ra_axis*step)+0] = cutout1[ra_axis];
     in[(dec_axis*step)+0] = cutout1[dec_axis];
@@ -638,7 +707,7 @@ retry_:
     ra1 = out[(ra_axis*step)+0] * RAD2DEG;
     dec1 = out[(dec_axis*step)+0] * RAD2DEG;
 
-    /*  Compute RA,DEC in degrees of image corner 2,2.
+    /*  Compute RA,DEC in degrees of cutout corner 2,2.
      */
     in[(ra_axis*step)+0] = cutout2[ra_axis];
     in[(dec_axis*step)+0] = cutout1[dec_axis];
@@ -648,7 +717,7 @@ retry_:
     ra2 = out[(ra_axis*step)+0] * RAD2DEG;
     dec2 = out[(dec_axis*step)+0] * RAD2DEG;
 
-    /*  Compute RA,DEC in degrees of image corner 3,3.
+    /*  Compute RA,DEC in degrees of cutout corner 3,3.
      */
     in[(ra_axis*step)+0] = cutout2[ra_axis];
     in[(dec_axis*step)+0] = cutout2[dec_axis];
@@ -658,7 +727,7 @@ retry_:
     ra3 = out[(ra_axis*step)+0] * RAD2DEG;
     dec3 = out[(dec_axis*step)+0] * RAD2DEG;
 
-    /*  Compute RA,DEC in degrees of image corner 4,4.
+    /*  Compute RA,DEC in degrees of cutout corner 4,4.
      */
     in[(ra_axis*step)+0] = cutout1[ra_axis];
     in[(dec_axis*step)+0] = cutout2[dec_axis];
@@ -676,11 +745,22 @@ retry_:
     ra3 = (ra3 < 0.0) ? (360.0 + ra3) : ra3;
     ra4 = (ra4 < 0.0) ? (360.0 + ra4) : ra4;
 
+    dec_size = abs (max(dec1,dec3) - min(dec1,dec3));
+    ra_size = abs (ra3 - ra1);
+    if (ra_size > 90.0) {                // crosses RA boundary
+        ra_size = (360.0 - max(ra1,ra3)) + min(ra1,ra3);
+    }
+    
+
     /*  Image center. */
     if (ra3 > ra1)
 	ra_cen = (ra3 - ra1) / 2.0 + ra1;
     else
 	ra_cen = (ra1 - ra3) / 2.0 + ra3;
+    ra_cen = (ra_size) / 2.0 + ra1;
+    if (ra_cen > 360.0)
+        ra_cen -= 360.0;
+
     if (dec3 > dec1)
 	dec_cen = (dec3 - dec1) / 2.0 + dec1;
     else
@@ -777,6 +857,7 @@ retry_:
         printf("     Corn3:  %lg %lg\n", cra3, cdec3);
         printf("     Corn4:  %lg %lg\n", cra4, cdec4);
         printf("Cutout:\n");
+        printf("      Size:  %lg %lg\n", ra_size, dec_size);
         printf("    Center:  %lg %lg\n", ra_cen, dec_cen);
         printf("     Corn1:  %lg %lg\n", ra1, dec1);
         printf("     Corn2:  %lg %lg\n", ra2, dec2);
@@ -999,6 +1080,7 @@ retry_:
     fclose (fp);
     astEnd;
 
+
     return (mdfile);
 }
 
@@ -1019,8 +1101,8 @@ read_header (char *imagefile, int *naxes, long *naxis, int *bitpix, int *axmap,
 
 
     if (fits_open_file (&fptr, imagefile, READONLY, &status) != 0) {
-fprintf (stderr, "fits_open_file() failed w/ status = %d\n", status);
-fits_report_error (stderr, status);
+//fprintf (stderr, "fits_open_file() failed w/ status = %d\n", status);
+//fits_report_error (stderr, status);
 	dl_error (14, "error reading FITS header", imagefile);
 	exit (2);
 
@@ -1164,9 +1246,9 @@ fits_report_error (stderr, status);
 
     if (status || wcsinfo == NULL || !astOK) {
 	fits_report_error (stderr, status); /* print any error message */
-fprintf (stderr, "final fail w/ status = %d\n", status);
-fprintf (stderr, "final fail w/ wcsinfo = %d\n", wcsinfo);
-fprintf (stderr, "final fail w/ astOK = %d\n", astOK);
+//fprintf (stderr, "final fail w/ status = %d\n", status);
+//fprintf (stderr, "final fail w/ wcsinfo = %d\n", wcsinfo);
+//fprintf (stderr, "final fail w/ astOK = %d\n", astOK);
 	dl_error (16, "error reading FITS header", imagefile);
     }
 
@@ -1219,9 +1301,6 @@ dl_extractImage (char *mdfile, int force)
      */
     if (dir == NULL)
 	dl_error (18, "root directory of staging area not specified", NULL);
-    //sprintf (mdpath, "%s/%s", dir, mdfile);
-    //sprintf (newimage, "%s/%s.fits", dir, mdfile);
-    //sprintf (tempimage, "%s/%s-temp.fits", dir, mdfile);
 
     memset (mdpath, 0, 256);
     memset (newimage, 0, 256);
@@ -1235,9 +1314,9 @@ dl_extractImage (char *mdfile, int force)
 
     if (debug) {
         printf ("mdpath = %s\n", mdfile);
-        printf ("newimage = %s.fits\n", mdfile);
-        printf ("pngimage = %s.png\n", mdfile);
-        printf ("tempimage = %s-temp.fits\n", mdfile);
+        printf ("newimage = %s\n", newimage);
+        printf ("pngimage = %s\n", pngimage);
+        printf ("tempimage = %s\n", tempimage);
     }
 
     /*  Create the image if it does not already exist, or if the
@@ -1245,7 +1324,7 @@ dl_extractImage (char *mdfile, int force)
      */
     if ((access (newimage, F_OK) < 0) || force) {
         if (debug) printf ("unlinking %s\n", newimage);
-	unlink (newimage);
+	if (do_unlink) unlink (newimage);
 
 	fitsfile  *infptr, *outfptr, *phufptr;
 	int status = 0, ii = 1;
@@ -1366,7 +1445,6 @@ dl_extractImage (char *mdfile, int force)
 
 	/*  FIXME -- Add the cutout code from spatial filter above.
 	 */
-
 	sval = dl_getKeyword (mdpath, "pixel_term");
 	if (sval != NULL && strcmp(sval,"true") == 0) {
 
@@ -1423,7 +1501,8 @@ dl_extractImage (char *mdfile, int force)
 	    stat = unlink (newimage);
             if (debug) printf ("extImg unlinked %s = %d\n", newimage, stat);
 	    stat = rename (tempimage, newimage);
-            if (debug) printf ("extImg renamed %s -> %s %d\n", tempimage, newimage, stat);
+            if (debug) 
+                printf("extImg renamed %s -> %s %d\n", tempimage,newimage,stat);
 	    if (stat != 0)
 		dl_error (22, "error renaming temporary image", imageref);
 	}
