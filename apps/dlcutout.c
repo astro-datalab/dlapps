@@ -192,7 +192,7 @@ int main (int argc, char *argv[])
 
     } else if ((qs = getenv ("CUTOUT_TEST"))) {
 	dir = "/dl1/temp";                              // [MACHDEP]
-	//debug++;
+	debug++;
 	extract++;
     	spat_filter++;
     	filter_term = 1;
