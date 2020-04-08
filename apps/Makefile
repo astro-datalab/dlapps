@@ -78,7 +78,7 @@ FFLAGS 	    = -g -Wall
 
 C_SRCS 	    = dlcutout.c dlmeta.c dlphead.c
 C_OBJS 	    = dlcutout.o dlmeta.o dlphead.o
-C_INCS 	    =
+C_INCS 	    = dbConnect.h
 
 F77_SRCS    =
 F77_OBJS    =
