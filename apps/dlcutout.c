@@ -1654,7 +1654,6 @@ dl_filePath (char *fname)
 
     PQclear(res);
     PQfinish(conn);
-strcpy (path, "/tmp/zz.fits.fz");
     return (path);
 
 #else
