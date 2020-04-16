@@ -13,6 +13,6 @@ static char *conn_info =
 #else
 
 static char *conn_info =
-    "dbname=tapdb host=gp01.datalab.noao.edu user=dlquery password=datalab";
+    "dbname=tapdb host=db02.datalab.noao.edu user=dlquery password=datalab";
 
 #endif
