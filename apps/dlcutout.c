@@ -79,7 +79,7 @@ static int time_filter 	= 0;		// are we doing temporal filtering?
 static int pol_filter 	= 0;		// are we doing polarization filtering?
 static int filter_term 	= 0;		// are we doing any kind of filtering?
 static int pixel_term 	= 0;		// are we doing a pixel cutout?
-static int extn		= 0;		// requested image extension
+static int extn		= -1;		// requested image extension
 static int preview	= 0;		// generate a preview?
 static int cutout	= 1;		// generate a cutout or use whole CCD?
 static int isCGI	= 0;		// are we running as a CGI script?
@@ -173,9 +173,9 @@ int main (int argc, char *argv[])
 
 
     if ((qs = getenv ("QUERY_STRING"))) {
+        //debug++;
 	dir = "/dl1/temp";                              // [MACHDEP]
-	debug++;
-	do_unlink = 0;
+	do_unlink = 1;
 	extract++;
     	spat_filter++;
     	filter_term = 1;
@@ -520,6 +520,12 @@ retry_:
 	    height = width;
         if (width == height) pix_size++;
 
+        /* Skip the transformations if we just want an extension or the
+        ** entire image.
+        */
+        if ((ra > 360.0 && dec > 90.0) || extn < 0)
+	    goto no_pos_;
+
 	double ra1  = ra  - (width  / 2.0);
 	double ra2  = ra  + (width  / 2.0);
 	double dec1 = dec - (height / 2.0);
@@ -856,6 +862,7 @@ retry_:
     int fd = -1;
     long npix;
 
+no_pos_:
     /*  Create the MDFILE (metadata link storage file).
      */
     if (dir == NULL)
@@ -1051,8 +1058,6 @@ read_header (char *imagefile, int *naxes, long *naxis, int *bitpix, int *axmap,
 
 
     if (fits_open_file (&fptr, imagefile, READONLY, &status) != 0) {
-//fprintf (stderr, "fits_open_file() failed w/ status = %d\n", status);
-//fits_report_error (stderr, status);
 	dl_error (14, "error reading FITS header", imagefile);
 	exit (2);
 
@@ -1196,9 +1201,6 @@ read_header (char *imagefile, int *naxes, long *naxis, int *bitpix, int *axmap,
 
     if (status || wcsinfo == NULL || !astOK) {
 	fits_report_error (stderr, status); /* print any error message */
-//fprintf (stderr, "final fail w/ status = %d\n", status);
-//fprintf (stderr, "final fail w/ wcsinfo = %d\n", wcsinfo);
-//fprintf (stderr, "final fail w/ astOK = %d\n", astOK);
 	dl_error (16, "error reading FITS header", imagefile);
     }
 
@@ -1292,7 +1294,12 @@ dl_extractImage (char *mdfile, int force)
 	    /*  Apply the filter term.  This amounts to a simple cutout, e.g.,
 	     *  "image[cutout]".
 	     */
-	    if ((sval = dl_getKeyword (mdpath, "cutout")) != NULL)
+	    if (extn > 0 && ra == 361.0 && dec == 91.0) {
+                char buf[256];
+                memset (buf, 0, 256);
+                sprintf (buf,"[%d]", extn);
+		cutout = strdup(buf);
+	    } else if ((sval = dl_getKeyword (mdpath, "cutout")) != NULL)
 		cutout = strdup(sval);
 	    if (imagefile == NULL || cutout == NULL)
 		dl_error (19, "cannot identify imagefile", mdfile);
@@ -1301,7 +1308,9 @@ dl_extractImage (char *mdfile, int force)
 	    /*  Open the input image PHU for the filter term. 
 	     */
 	    memset (imageref, 0, 256);
-	    if (imagefile[0] == '/')
+	    if (extn > 0 && ra == 361.0 && dec == 91.0)
+	        sprintf (imageref, "%s", imagefile);
+	    else if (imagefile[0] == '/')
 	        sprintf (imageref, "%s%s", imagefile, cutout);
 	    else
 	        sprintf (imageref, "%s/%s%s", dir, imagefile, cutout);
@@ -1632,9 +1641,6 @@ dl_filePath (char *fname)
         return (NULL);
     }
 
-//fprintf (stderr, "collection='%s'\n", (collection ? 'none' : collection));
-//printf ("conn = '%s'\n", conn_info);
-//printf ("query = '%s'\n", query);
     res = PQexec(conn, query);                  // execute the query
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         fprintf (stderr, "ERROR: Empty query result\n");
@@ -1642,13 +1648,13 @@ dl_filePath (char *fname)
     }
 
     value = PQgetvalue(res, row, 0);     // fetch result
-//printf ("value = '%s'\n", value);
     memset (path, 0, sizeof(path));
     if (value)
         strncpy (path, value, strlen(value));
 
     PQclear(res);
     PQfinish(conn);
+strcpy (path, "/tmp/zz.fits.fz");
     return (path);
 
 #else
