@@ -173,7 +173,7 @@ int main (int argc, char *argv[])
 
 
     if ((qs = getenv ("QUERY_STRING"))) {
-        //debug++;
+        debug++;
 	dir = "/dl1/temp";                              // [MACHDEP]
 	do_unlink = 1;
 	extract++;
@@ -1066,6 +1066,7 @@ read_header (char *imagefile, int *naxes, long *naxis, int *bitpix, int *axmap,
 
 	dl_loadPHU (fptr); 			// load the primary header
 
+
 	if (extn > 0) {
 	    fitsfile *eptr;
 	    char  epath[1024];
@@ -1647,7 +1648,7 @@ dl_filePath (char *fname)
         return (NULL);
     }
 
-    value = PQgetvalue(res, row, 0);     // fetch result
+    value = PQgetvalue(res, row, 0);            // fetch result
     memset (path, 0, sizeof(path));
     if (value)
         strncpy (path, value, strlen(value));

@@ -139,15 +139,16 @@ dl_loadPHU (fitsfile *fptr)
 
     /*
     if (phu_header == NULL)
-	phu_header = calloc (1, 2880000);
+	phu_header = calloc (1, 28800000);
     else
-        memset (&phu_header, 0, 2880000);
+        memset (&phu_header, 0, 28800000);
     */
 
     if (fits_hdr2str (fptr, 0, NULL, 0, &phu_header, &nkeys, &status ) != 0) {
 	fprintf (stderr, "Error reading PHU FITS header\n");
 	return;
     }
+
 
 //printf ("loadPHU:  header str:\n%s\n======================\n", phu_header);
     //memset (&phu, 0, sizeof (struct PHU));
@@ -318,7 +319,7 @@ dl_mergeHeaders (char *phu_hdr, char *ehu_hdr)
 
     /*  Trim the END keyword from the PHU.
      */
-    if ((ec = strstr (phu, "END")))
+    if ((ec = strstr (phu, "END   "))) 
         *ec = '\0';
 
     /*  Skip the XTENSION keyword in a MEF file.
@@ -331,7 +332,7 @@ dl_mergeHeaders (char *phu_hdr, char *ehu_hdr)
     enkeys = strlen (ehu) / 80;
 
     if (DEBUG) {
-	fprintf (stderr, "pnkeys = %d   enkeys = %d  ", pnkeys, enkeys);
+	fprintf (stderr, "mergeKeys: pnkeys = %d   enkeys = %d  ", pnkeys, enkeys);
 	fflush (stderr);
     }
 
@@ -350,6 +351,7 @@ dl_mergeHeaders (char *phu_hdr, char *ehu_hdr)
     pc = phu;
     hc = &header[strlen(header)];		// end of 'header' pointer
     for (i=0; i < pnkeys; i++) {
+        memset (keyw, 0, 8);
 	memcpy (keyw, pc, 8);
 
 	if (strncmp (keyw, "END", 3) == 0)
@@ -366,7 +368,9 @@ dl_mergeHeaders (char *phu_hdr, char *ehu_hdr)
 	    }
 	}
 	if (!found) {
-	    if (strstr (pc, "INDEF") == NULL)
+            char line[80];
+            strncpy (line, pc, 80);
+	    if (strstr (line, "INDEF") == NULL)
 	        memcpy (hc, pc, 80);
 	    hc += 80;
 	}

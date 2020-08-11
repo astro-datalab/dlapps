@@ -60,10 +60,11 @@ static int debug 	= 0;
 static int verbose 	= 0;
 static int extn 	= -1;
 
-static char *cur_name  	= NULL;			// current file name
-static char *cur_path  	= NULL;			// current file's full path
-static int   cur_extn  	= 0;			// current MEF extension
-static long  cur_fsize  = 0L;			// current file size
+static char *cur_name  	= NULL;		// current file name
+static char *cur_path  	= NULL;		// current file's full path
+static int   cur_extn  	= 0;		// current MEF extension
+static long  cur_fsize  = 0L;		// current file size
+static int   use_parent = 0;		// use parent dir in fileref
 
 static char *keyw_file  = NULL;
 static char *file_ref   = NULL;
@@ -152,7 +153,7 @@ extern double dl_sexa (char *s);
 
 
 /* Command line arguments. */
-static char opts[] = "hdvc:f:e:i:o:t:C:E:I:K:O:P:S:T:";
+static char opts[] = "hdvpc:f:e:i:o:t:C:E:I:K:O:P:S:T:";
 static struct option long_opts[] = {
     { "help",		no_argument,		NULL,	'h' },
     { "debug",		no_argument,		NULL,	'd' },
@@ -165,6 +166,7 @@ static struct option long_opts[] = {
     { "outfile",	required_argument,	NULL,	'o' },
     { "creation-type",	required_argument,	NULL,	't' },
     { "creator",	required_argument,	NULL,	'C' },
+    { "parent",	        no_argument,	        NULL,	'p' },
 
     { "instrument",	required_argument,	NULL,	'I' },
     { "keywords",	required_argument,	NULL,	'K' },
@@ -218,6 +220,7 @@ int main (int argc, char *argv[])
 	    case 'e':	extn = dl_atoi (optval); 	break;
 	    case 'i': 	*flist++ = strdup (optval); 	break;
 	    case 't': 	ctype = strdup (optval); 	break;
+	    case 'p':	use_parent++; 			break;
 
 	    case 'C':	creator = strdup (optval);	break;
 	    case 'K':	keyw_file = strdup (optval);	break;
@@ -242,7 +245,6 @@ int main (int argc, char *argv[])
             *flist++ = strdup (optval);
         }
     }
-
 
     /*  Sanity checks.
      */
@@ -482,6 +484,10 @@ dl_procFITS (char *fname, char *dir)
     memset (&phu, 0, sizeof (phu));
     memset (&ehu, 0, sizeof (phu));
 
+   	            
+    if (verbose > 1)
+        fprintf (stderr, "Processing file: '%s'\n", fname);
+
     cur_name = fname;
     if (fname[0] == '/') {
 	/*  Absolute path in filename.
@@ -494,6 +500,10 @@ dl_procFITS (char *fname, char *dir)
          */
 	for (ip=&fname[strlen(fname)-1]; *ip != '/' && ip >= fname; ip--)
 	    ;
+	if (*ip == '/')
+            if (use_parent)
+	        for (ip--; *ip != '/' && ip >= fname; ip--)
+	            ;
 	if (*ip == '/')
 	    ip++;
 	cur_name = ip;
@@ -532,12 +542,11 @@ dl_procFITS (char *fname, char *dir)
 
     if (!fits_open_file (&fptr, imgfile, READONLY, &status)) {
 
-//fits_get_hdu_num (fptr, &hdupos);  	// get current HDU position
-//printf ("after openeing FITS file: HDUPOS = %d\n", hdupos);
+fits_get_hdu_num (fptr, &hdupos);  	// get current HDU position
+printf ("after opening FITS file: HDUPOS = %d\n", hdupos);
 	/*  Load the primary header information.
 	 */
 	dl_loadPHU (fptr);
-printf ("after 1st loadPHU, phu.exptime = %g....\n", phu.exptime);
 	if (dl_getMetadata (fptr, HDR_PHU, phu_wcs, stderr, imgfile) == OK)
             ; //wcs_in_phu++;
         else {
@@ -585,13 +594,14 @@ printf ("after 1st loadPHU, phu.exptime = %g....\n", phu.exptime);
 	}
 
         fits_get_hdu_num (fptr, &hdupos);  	// get current HDU position
-//printf ("HDUPOS = %d\n", hdupos);
+fprintf (stderr, "HDUPOS = %d  extn=%d\n", hdupos, extn);
 
         /*  List only a single header if a specific extension was given.
          */
         if (hdupos != 1 || extn >= 0) {
             if (debug)
                 fprintf (stderr, "Doing SIF image or extn = %d\n", extn);
+fprintf (stderr, "Doing SIF image (%d) or extn = %d\n", hdupos, extn);
             single = 1;
         } else {
             /*  Skip PHU for an MEF image.  If this throws an EOF then try
@@ -602,9 +612,9 @@ printf ("after 1st loadPHU, phu.exptime = %g....\n", phu.exptime);
 
             if (fits_movrel_hdu (fptr, 1, NULL, &status) == END_OF_FILE) {
 fits_get_hdu_num (fptr, &hdupos);
-printf ("B4 loadEHU: HDUPOS = %d\n", hdupos);
+//printf ("B4 loadEHU: HDUPOS = %d\n", hdupos);
 	        dl_loadEHU (fptr, 1);			// load 1st EHU header
-printf ("after 1st loadEHU, phu.exptime = %g....\n", phu.exptime);
+//printf ("after 1st loadEHU, phu.exptime = %g....\n", phu.exptime);
 	        if (dl_getMetadata (fptr, HDR_EHU, ehu_wcs, stderr, imgfile) == OK) {
 		    dl_writeObsCore ();
 		    dl_writeExposure ();
@@ -630,7 +640,7 @@ printf ("after 1st loadEHU, phu.exptime = %g....\n", phu.exptime);
 	    }
         }
 
-	cur_extn = 0;           // CFITSIO is one-indexed, i.e. PHU = 1
+	cur_extn = 0 - single;      // CFITSIO is one-indexed, i.e. PHU = 1
 
         /*  Main loop through each extension.
          */
@@ -651,7 +661,7 @@ printf ("after 1st loadEHU, phu.exptime = %g....\n", phu.exptime);
             }
 
 	    dl_loadEHU (fptr, cur_extn);		// load EHU header
-printf ("after loop loadEHU, phu.exptime = %g....\n", phu.exptime);
+//printf ("after loop loadEHU, phu.exptime = %g....\n", phu.exptime);
 	    if (dl_getMetadata (fptr, HDR_EHU,ehu_wcs,stderr,imgfile) == ERR) {
 		fprintf (stderr, "Error reading Header #%d\n", hdupos);
 		astClearStatus;

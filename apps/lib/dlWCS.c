@@ -86,9 +86,9 @@ dl_readWCSHeader (fitsfile *fptr, char *imagefile, int *naxes, long *naxis,
 
 
     if (ehu_header == NULL)
-	ehu_header = calloc (1, 2880000);
+	ehu_header = calloc (1, 28800000);
     else
-	memset (ehu_header, 0, 2880000);
+	memset (ehu_header, 0, 28800000);
 
     if (fits_hdr2str (fptr, 0, NULL, 0, &ehdr, &nkeys, &status ) != 0) {
 	dl_error (14, "readWCSHeader B4: error reading FITS header", imagefile);
@@ -250,7 +250,8 @@ dl_readWCSHeader (fitsfile *fptr, char *imagefile, int *naxes, long *naxis,
          */
         char *p;
         while ((p = strstr(header, "INDEF")))
-            strcpy (p, "  0.0");
+            memcpy (p, "  0.0", 5);
+
 	astPutCards (fitschan, header);
 
 	/* Free the memory holding the concatenated header cards.
@@ -264,7 +265,7 @@ dl_readWCSHeader (fitsfile *fptr, char *imagefile, int *naxes, long *naxis,
 	wcsinfo = astRead (fitschan);
 	astClearStatus;
 
-	//if (wcsinfo != NULL)
+	if (wcsinfo != NULL)
 	    fitschan = astDelete (fitschan);
         //else
         //    fprintf (stderr, "readWCSHeader:  wcsinfo = NULL\n");
@@ -273,8 +274,6 @@ dl_readWCSHeader (fitsfile *fptr, char *imagefile, int *naxes, long *naxis,
     if (status == END_OF_FILE)
 	status = 0; 		/* Reset after normal error */
 
-//printf ("is_phu = %d  wcsinfo = %d  status = %d  astOK = %d  \n", 
-//is_phu, wcsinfo, status, astOK);
     if (!is_phu && (status || wcsinfo == NULL || !astOK)) {
 	fits_report_error (stderr, status); /* print any error message */
 	dl_error (16, "readWCSHeader: error reading FITS WCS", imagefile);
