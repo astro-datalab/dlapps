@@ -36,11 +36,11 @@ LIBAST		= -last_grf3d -last_pgplot -last
 LIBAST		= -last
 LIBAST		= /usr/local/lib/libast.a /usr/local/lib/libast_pal.a /usr/local/lib/libast_err.a /usr/local/lib/libast_grf3d.a /usr/local/lib/libast_pgplot3d.a /usr/local/lib/libast_grf_5.6.a /usr/local/lib/libast_grf_2.0.a /usr/local/lib/libast_grf_3.2.a
 LIBAST		= ../lib/libast.a ../lib/libast_pal.a ../lib/libast_err.a ../lib/libast_grf3d.a ../lib/libast_pgplot3d.a ../lib/libast_grf_5.6.a ../lib/libast_grf_2.0.a ../lib/libast_grf_3.2.a
-LIBCURL		= -lcurl
+LIBCURL		= -L/usr/local/lib -lcurl
 LIBCFITSIO	= -lcfitsio
 LIBPNG		= -lpng
-#LIBCURL	= ../lib/libcurl.a
-#LIBCFITSIO	= ../lib/libcfitsio.a
+LIBCURL	        = ../lib/libcurl.a
+LIBCFITSIO	= ../lib/libcfitsio.a -lbz2
 
         
 ifeq ($(PLATFORM),Darwin)
