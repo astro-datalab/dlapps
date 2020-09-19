@@ -153,7 +153,7 @@ extern double dl_sexa (char *s);
 
 
 /* Command line arguments. */
-static char opts[] = "hdvpc:f:e:i:o:t:C:E:I:K:O:P:S:T:";
+static char opts[] = "hdvc:f:e:i:o:t:C:E:I:K:O:P:S:T:";
 static struct option long_opts[] = {
     { "help",		no_argument,		NULL,	'h' },
     { "debug",		no_argument,		NULL,	'd' },
@@ -246,6 +246,7 @@ int main (int argc, char *argv[])
         }
     }
 
+
     /*  Sanity checks.
      */
     if (*fstart == NULL) {
@@ -289,7 +290,7 @@ int main (int argc, char *argv[])
 		    fprintf (stderr, "Processing DIR = '%s'\n", *flist);
 	        dl_procDir ( *flist, TRUE );
 
-	    } else if (dl_isFITS (*flist)) {
+	    } else if (dl_isFITS (*flist) || dl_isGZip (*flist) || dl_isBZip2 (*flist)) {
 	        if (debug || verbose)
 		    fprintf (stderr, "Processing FITS = '%s'\n", *flist);
 	        dl_procFITS ( *flist, NULL );
@@ -376,7 +377,7 @@ dl_procFile (char *atfile)
 		        fprintf (stderr, "Processing dir: '%s'\n", fname);
 	            dl_procDir (fname, TRUE);
 
-		} else if (dl_isFITS (fname))
+		} else if (dl_isFITS (fname) || dl_isGZip (fname) || dl_isBZip2 (fname))
 	            dl_procFITS (fname, NULL);
 
 	        else
@@ -456,7 +457,7 @@ dl_procDir (char *dirname, int recurse)
             (void) dl_procDir (newpath, recurse);
 
         } else {
-	    if (dl_isFITS (newpath)) {
+	    if (dl_isFITS (newpath) || dl_isGZip (newpath) || dl_isBZip2 (newpath)) {
 	        if (verbose>1)
 		    fprintf (stderr, "Processing file '%s'\n", newpath);
 
@@ -484,10 +485,6 @@ dl_procFITS (char *fname, char *dir)
     memset (&phu, 0, sizeof (phu));
     memset (&ehu, 0, sizeof (phu));
 
-   	            
-    if (verbose > 1)
-        fprintf (stderr, "Processing file: '%s'\n", fname);
-
     cur_name = fname;
     if (fname[0] == '/') {
 	/*  Absolute path in filename.
@@ -501,10 +498,10 @@ dl_procFITS (char *fname, char *dir)
 	for (ip=&fname[strlen(fname)-1]; *ip != '/' && ip >= fname; ip--)
 	    ;
 	if (*ip == '/')
-            if (use_parent)
-	        for (ip--; *ip != '/' && ip >= fname; ip--)
+            if (use_parent) {
+	        for (; *ip != '/' && ip >= fname; ip--)
 	            ;
-	if (*ip == '/')
+            }
 	    ip++;
 	cur_name = ip;
 
@@ -542,11 +539,12 @@ dl_procFITS (char *fname, char *dir)
 
     if (!fits_open_file (&fptr, imgfile, READONLY, &status)) {
 
-fits_get_hdu_num (fptr, &hdupos);  	// get current HDU position
-printf ("after opening FITS file: HDUPOS = %d\n", hdupos);
+//fits_get_hdu_num (fptr, &hdupos);  	// get current HDU position
+//printf ("after openeing FITS file: HDUPOS = %d\n", hdupos);
 	/*  Load the primary header information.
 	 */
 	dl_loadPHU (fptr);
+//printf ("after 1st loadPHU, phu.exptime = %g....\n", phu.exptime);
 	if (dl_getMetadata (fptr, HDR_PHU, phu_wcs, stderr, imgfile) == OK)
             ; //wcs_in_phu++;
         else {
@@ -594,14 +592,13 @@ printf ("after opening FITS file: HDUPOS = %d\n", hdupos);
 	}
 
         fits_get_hdu_num (fptr, &hdupos);  	// get current HDU position
-fprintf (stderr, "HDUPOS = %d  extn=%d\n", hdupos, extn);
+//printf ("HDUPOS = %d\n", hdupos);
 
         /*  List only a single header if a specific extension was given.
          */
         if (hdupos != 1 || extn >= 0) {
             if (debug)
                 fprintf (stderr, "Doing SIF image or extn = %d\n", extn);
-fprintf (stderr, "Doing SIF image (%d) or extn = %d\n", hdupos, extn);
             single = 1;
         } else {
             /*  Skip PHU for an MEF image.  If this throws an EOF then try
@@ -640,7 +637,7 @@ fits_get_hdu_num (fptr, &hdupos);
 	    }
         }
 
-	cur_extn = 0 - single;      // CFITSIO is one-indexed, i.e. PHU = 1
+	cur_extn = 0;           // CFITSIO is one-indexed, i.e. PHU = 1
 
         /*  Main loop through each extension.
          */

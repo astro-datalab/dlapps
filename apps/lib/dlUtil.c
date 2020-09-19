@@ -377,6 +377,27 @@ dl_isGZip (char *fname)
 
 
 /**
+ *  DL_ISBZIP2 -- Test a file to see if it is a simple FITS file.
+ */
+int 
+dl_isBZip2 (char *fname)
+{
+    int fp, value = 0;
+    char keyw[8], val;
+
+    memset (keyw, 0, 8);
+    if ((fp = open (fname, O_RDONLY))) {
+        read (fp, &keyw, 3);
+        if (strncmp ("BZh", keyw, 3) == 0)
+            value = 1;
+        close (fp);
+    }
+    return value;
+}
+
+
+
+/**
  *  DL_ATOI -- System atoi() with lexical argument checking.
  */
 int

@@ -173,7 +173,7 @@ int main (int argc, char *argv[])
 
 
     if ((qs = getenv ("QUERY_STRING"))) {
-        debug++;
+        //debug++;
 	dir = "/dl1/temp";                              // [MACHDEP]
 	do_unlink = 1;
 	extract++;
@@ -1065,7 +1065,6 @@ read_header (char *imagefile, int *naxes, long *naxis, int *bitpix, int *axmap,
 	char key[20];
 
 	dl_loadPHU (fptr); 			// load the primary header
-
 
 	if (extn > 0) {
 	    fitsfile *eptr;
