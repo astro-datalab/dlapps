@@ -1,4 +1,4 @@
-prefix=/net/iraf/home.d/fitz/dlapps
+prefix=/home/fitz/dlapps/cfitsio
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
