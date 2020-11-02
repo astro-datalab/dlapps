@@ -310,7 +310,7 @@ int main (int argc, char *argv[])
     /*  If we're not extracting an extension or cutout, simply return the
      *  entire file.
      */
-    if (extn == 0 && preview == 0 && (ra > 360 && dec > 90.0)) {
+    if (extn <= 0 && preview == 0 && (ra > 360 && dec > 90.0)) {
         if (isCGI)
 	    if (!debug) dl_cgiResponse (imagefile, "fits");
 
