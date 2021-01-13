@@ -34,7 +34,7 @@
 #define	EPSILOND	(2.22e-16)
 
 
-#define	BASE_SIA_URL	"http://datalab.noao.edu/svc/cutout"
+#define	BASE_SIA_URL	"https://datalab.noao.edu/svc/cutout"
 #define	BASE_FILE_REF	"fileRef"
 #define	SIA_COLLECTION	"nsa"
 #define	CREATION_TYPE	"Stack"
