@@ -50,7 +50,8 @@
 #define MAXAXES         7
 #define KEYLEN          FLEN_KEYWORD
 #define COMLEN          FLEN_COMMENT
-#define RAD2DEG         57.2957795
+#define RAD2DEG         57.29577951308232
+#define DEG2RAD         0.017453292519943
 #define EPSILONR        (1.19e-7)
 #define EPSILOND        (2.22e-16)
 
