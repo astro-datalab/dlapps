@@ -174,7 +174,7 @@ int main (int argc, char *argv[])
 
     if ((qs = getenv ("QUERY_STRING"))) {
         //debug++;
-	dir = "/dl1/temp";                              // [MACHDEP]
+	dir = "/net/dl2/temp";                              // [MACHDEP]
 	do_unlink = 1;
 	extract++;
     	spat_filter++;
@@ -191,7 +191,7 @@ int main (int argc, char *argv[])
 	}
 
     } else if ((qs = getenv ("CUTOUT_TEST"))) {
-	dir = "/dl1/temp";                              // [MACHDEP]
+	dir = "/net/dl2/temp";                              // [MACHDEP]
 	debug++;
 	extract++;
     	spat_filter++;
@@ -575,6 +575,7 @@ retry_:
      *  reverse transformation to get back to image pixel coordinates.
      */
     if (debug) {
+        // NOTE: the 'in' values are parent pixels, the 'out' values are degrees
         printf ("Bounding B4: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
         printf ("Bounding B4: out %g %g %g %g\n", 
                 out[0]*RAD2DEG, out[1]*RAD2DEG, 
@@ -582,6 +583,7 @@ retry_:
     }
     astTranN (wcs, npts, imdim, step, out, 0, imdim, step, in);
     if (debug) {
+        // NOTE: the 'in' values are cutout pixels, the 'out' values are degrees
         printf ("Bounding after: in %g %g %g %g\n", in[0], in[1], in[2], in[3]);
         printf ("Bounding after: out %g %g %g %g\n", 
                 out[0]*RAD2DEG, out[1]*RAD2DEG, 
@@ -589,11 +591,13 @@ retry_:
     }
 
     /*  Compute the image plate scale and pixel width/height.
-     */
-    double scale_width = abs(width / (in[0] - in[1]) * 3600.0);
-    double scale_height = abs(height / (in[2] - in[3]) * 3600.0);
     double pix_width = abs (width * 3600. / scale_width);
     double pix_height = abs (height * 3600. / scale_width);
+     */
+    double scale_width = abs((width / (in[0] - in[1])) * 3600.0);
+    double scale_height = abs((height / (in[2] - in[3])) * 3600.0);
+    double pix_width = abs ((width * 3600.) / scale_width);
+    double pix_height = abs ((height * 3600.) / scale_height);
     if (debug) {
         printf ("  req scale : %g  %g\n", width, height);
         printf ("image scale : %g  %g\n", scale_width, scale_height);
@@ -965,8 +969,9 @@ no_pos_:
 	    fprintf (fp, "s_dec = %.*g\n", DBL_DIG, dec_cen);
 
 	    /*  Image field of view.  Let's use the smaller extent.
-	     */
 	    double ra_width = abs(ra3 - ra1) * cos(dec3 / RAD2DEG);
+	     */
+	    double ra_width = abs(ra3 - ra1);
 	    double dec_width = abs(dec3 - dec1);
 	    fprintf(fp, "s_fov = %g\n", min(ra_width, dec_width));
 
@@ -1709,6 +1714,9 @@ dl_parseQueryString (char *qs, char **fileRef, int *extn,
 
 	} else if (strncasecmp (keyw, "extn", 3) == 0) {
 	    *extn = atoi (val);
+
+	} else if (strncasecmp (keyw, "debug", 3) == 0) {
+	    debug = atoi (val);
 
 	} else if (strncasecmp (keyw, "pos", 3) == 0) {
 	    if (strchr (val, (int)',')) {
