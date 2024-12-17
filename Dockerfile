@@ -4,6 +4,9 @@ FROM gcc:14.2 AS build
 WORKDIR /home/fitz/dlapps
 COPY . .
 
+# install additional packages
+RUN apt-get update && apt-get install -y libpq-dev
+
 # compile the code with make and gcc
 RUN make all
 
